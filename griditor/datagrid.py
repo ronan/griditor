@@ -44,9 +44,7 @@ class DataGrid(Widget, can_focus=True):
 
     original_df = None
     df = None
-
-    num_cols: int = 0
-    num_rows: int = 0
+    data = None
     
     selected_col: Reactive[int] = Reactive(0)
     offset: Reactive[int] = Reactive(0)
@@ -60,11 +58,13 @@ class DataGrid(Widget, can_focus=True):
         self,
         name: str = None,
         df = None,
+        data = None
     ) -> None:
         super().__init__(name)
 
         self.original_df = df
         self.dfs = df.copy()
+        self.data = data
 
         self.reset()
 
@@ -96,7 +96,7 @@ class DataGrid(Widget, can_focus=True):
         self.offset = 0
 
     async def key_end(self) -> None:
-        self.scroll(len(self.df.index))
+        self.scroll(len(self.data.df.index))
 
     async def key_left(self) -> None:
         self.move_column_selection(-1)
@@ -120,39 +120,33 @@ class DataGrid(Widget, can_focus=True):
         self.zeroidx = not self.zeroidx
 
     async def key_w(self) -> None:
-        self.df.sort_values(by=self.df.columns[self.selected_col], ascending=False, inplace=True)
+        self.data.sort(self.selected_col)
 
     async def key_s(self) -> None:
-        self.df.sort_values(by=self.df.columns[self.selected_col], ascending=True, inplace=True, na_position="first")
+        self.data.rsort(self.selected_col)
 
     def reset(self) -> None:
-        self.df = self.original_df.copy()
+        self.data.restore()
         self.select_column(0)
         self.offset = 0
 
     def shuffle(self) -> None:
-        self.df = self.df.sample(frac=1)
+        self.data.shuffle()
 
     def clean(self) -> None:
-        col = self.df.columns[self.selected_col]
-        self.df = self.df[self.df[col].notnull()]
+        self.data.clean()
 
     def scroll(self, delta: int = 1) -> None:
-        self.offset = clamp(self.offset + delta, 0, len(self.df.index) - self.get_page_size())
-
-    def group(self) -> None:
-        col = self.df.columns[self.selected_col]
-        self.df = self.df.groupby(col).first()
+        self.offset = clamp(self.offset + delta, 0, len(self.data.df.index) - self.get_page_size())
 
     def filter(self, query: str = "") -> None:
-        col = self.df.columns[self.selected_col]
-        self.df = self.df.loc[self.df[col].str.contains(query, case=False)]
+        data.filter(self.selected_col, query)
 
     def move_column_selection(self, delta) -> None:
         self.select_column(self.selected_col + delta)
 
     def select_column(self, idx) -> None:
-        self.selected_col = clamp(idx, 0, len(self.df.columns) - 1)
+        self.selected_col = clamp(idx, 0, len(self.data.df.index) - 1)
 
     def get_page_size(self) -> None:
         return self.size.height - 7
@@ -175,15 +169,17 @@ class DataGrid(Widget, can_focus=True):
         return styles
 
     def render(self) -> RenderableType:
+        num_rows = len(self.data.df.index)
+        # num_rows = len(self.df.index)
+
         styles = self.get_styles()
         visible = self.get_page_size()
-        num_rows = len(self.df.index)
         start = clamp(self.offset, 0, num_rows - 1)
         end = clamp(start + visible, 0, num_rows - 1)
 
         out = table = Table(
             expand=True,
-            caption=f"{len(self.df.index)} of {len(self.original_df.index)} records. POS: {self.selected_col}, {self.offset}",
+            caption=f"{len(self.data.df.index)} of {len(self.data.df_0.index)} records. POS: {self.selected_col}, {self.offset}",
             box=styles['box']
         )
         out = Panel(out, style=styles['panel'])
@@ -191,13 +187,13 @@ class DataGrid(Widget, can_focus=True):
         table.add_column("", style=styles['index'], justify="right")
 
         # Add Cols
-        for index, column in enumerate(self.df.columns):
+        for index, column in self.data.headers():
             style = styles['selected'] if index == self.selected_col else styles['column']
             table.add_column(column, style=style, header_style=styles['header'])
 
         # Add Rows
         skew = +1 if not self.zeroidx else 0
-        for index, value_list in enumerate(self.df[start:end].values.tolist()):
+        for index, value_list in self.data.slice(start, end):
             row = [value_renderable(x) for x in value_list]
             table.add_row(str(index + start + skew), *row)
 

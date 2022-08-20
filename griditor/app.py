@@ -71,7 +71,7 @@ class Griditor(App):
         await self.grid.focus()
 
     async def on_mount(self, event: events.Mount) -> None:
-        self.grid = DataGrid(df=self.df)
+        self.grid = DataGrid(df=self.df, data=self.data)
         self.filters = Filter()
         self.filters.datagrid = self.grid
         self.filters.df = self.df

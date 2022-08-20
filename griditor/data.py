@@ -2,42 +2,43 @@ import pandas as pd
 
 
 class Data():
-  num_rows: int = 0
-  num_cols: int = 0
-
   df: pd.DataFrame = None
-
+  df_0: pd.DataFrame = None
 
   def load(self, file: str) -> None:
-    self.df = pd.read_csv(
+    self.df_0 = self.df = pd.read_csv(
         file,
         parse_dates = True,
         na_values = ['']
     )
 
-  def shuffle() -> None:
+  def restore(self) -> None:
+    self.df = self.df_0.copy()
+
+  def shuffle(self) -> None:
     self.df = self.df.sample(frac=1)
 
-  def clean(col: int):
+  def clean(self, col: int):
     self.df = self.df[self.col(col).notnull()]
 
-  def filter(query: str = "") -> None:
+  def filter(self, col: int, query: str = "") -> None:
     self.df = self.df.loc[self.col(col).str.contains(query, case=False)]
 
-  def sort(col: int):
-    self.df = self.df.sort_values(by=self.col(col), ascending=True, na_position="first")
+  def sort(self, col: int):
+    col = self.col(col)
+    self.df = self.df.sort_values(by=col, ascending=True, na_position="first")
 
-  def rsort(col: int):
+  def rsort(self, col: int):
     self.df = self.df.sort_values(by=self.col(col), ascending=False, na_position="last")
 
-  def headers() -> list:
+  def headers(self) -> list:
     return enumerate(self.df.columns)
 
-  def slice(start: int = 0, end: int = None):
-    enumerate(self.df[start:end].values.tolist())
-    return 
+  def slice(self, start: int = 0, end: int = None):
+    return enumerate(self.df[start:end].values.tolist())
+     
 
-  def col(idx: int):
+  def col(self, idx: int):
     return self.df.iloc[:, idx]
 
   
