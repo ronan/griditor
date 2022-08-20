@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from typing import List
 
 import pandas as pd
@@ -50,8 +52,12 @@ class Data:
         self.df = self.df.loc[self.col().notnull()]
 
     def filter(self, query: str = "") -> None:
-        self.clean()
-        self.df = self.df.loc[self.col().str.contains(query, case=False)]
+        try:
+            re.compile(query)
+            self.clean()
+            self.df = self.df.loc[self.col().str.contains(query, case=False)]
+        except re.error:
+            pass
 
     def sort(self):
         self.df = self.df.sort_values(

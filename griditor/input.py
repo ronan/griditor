@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
+from textual.reactive import Reactive
+
 from textual_inputs import TextInput as BaseTextInput
 from rich.console import RenderableType
 from rich.text import Text
@@ -13,6 +15,7 @@ class TextInput(BaseTextInput):
     name: Optional[str] = "None"
     title: Optional[str] = None
     value: Optional[str] = None
+    valid: Reactive[bool] = Reactive(False)
 
     def __init__(
         self,
@@ -66,10 +69,11 @@ class TextInput(BaseTextInput):
         else:
             title = self.title
 
+        style = "green" if self.valid else "red"
         return Panel(
             text,
             title_align="left",
             height=3,
-            style="dim" if not self.has_focus else "",
+            style="dim" if not self.has_focus else style,
             box=box.SQUARE,
         )

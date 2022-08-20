@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import rich
 
 from textual import events
@@ -66,6 +68,12 @@ class Filter(DockView):
         await self.app.action_escape()
 
     async def handle_on_change_regex(self, message: Message) -> None:
+        try:
+            re.compile(message.sender.value)
+            self.regex.valid = True
+        except re.error:
+            self.regex.valid = False
+
         self.data.restore_snapshot()
         self.data.filter(message.sender.value)
 
