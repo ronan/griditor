@@ -21,8 +21,10 @@ FUTURE = 1900000000
 
 
 def clamp(val, min, max):
-    if val < min: return min
-    if val > max: return max
+    if val < min:
+        return min
+    if val > max:
+        return max
     return val
 
 
@@ -45,7 +47,7 @@ class DataGrid(Widget, can_focus=True):
     original_df = None
     df = None
     data = None
-    
+
     selected_col: Reactive[int] = Reactive(0)
     offset: Reactive[int] = Reactive(0)
     zeroidx: Reactive[bool] = Reactive(False)
@@ -54,12 +56,7 @@ class DataGrid(Widget, can_focus=True):
     mouse_over: Reactive[bool] = Reactive(False)
     height: Reactive[int] = Reactive(20)
 
-    def __init__(
-        self,
-        name: str = None,
-        df = None,
-        data = None
-    ) -> None:
+    def __init__(self, name: str = None, df=None, data=None) -> None:
         super().__init__(name)
 
         self.original_df = df
@@ -120,10 +117,10 @@ class DataGrid(Widget, can_focus=True):
         self.zeroidx = not self.zeroidx
 
     async def key_w(self) -> None:
-        self.data.sort(self.selected_col)
+        self.data.rsort(self.selected_col)
 
     async def key_s(self) -> None:
-        self.data.rsort(self.selected_col)
+        self.data.sort(self.selected_col)
 
     def reset(self) -> None:
         self.data.restore()
@@ -137,10 +134,12 @@ class DataGrid(Widget, can_focus=True):
         self.data.clean()
 
     def scroll(self, delta: int = 1) -> None:
-        self.offset = clamp(self.offset + delta, 0, len(self.data.df.index) - self.get_page_size())
+        self.offset = clamp(
+            self.offset + delta, 0, len(self.data.df.index) - self.get_page_size()
+        )
 
     def filter(self, query: str = "") -> None:
-        data.filter(self.selected_col, query)
+        self.data.filter(self.selected_col, query)
 
     def move_column_selection(self, delta) -> None:
         self.select_column(self.selected_col + delta)
@@ -153,19 +152,21 @@ class DataGrid(Widget, can_focus=True):
 
     def get_styles(self) -> dict:
         styles = {
-                "panel": "dim",
-                "column": "white",
-                "selected": "white on bright_black",
-                "header": "white",
-                "index": "dim",
-                "box": box.SIMPLE
-            }
+            "panel": "dim",
+            "column": "white",
+            "selected": "white on bright_black",
+            "header": "white",
+            "index": "dim",
+            "box": box.SIMPLE,
+        }
 
         if self.has_focus:
-            styles.update({
-                "panel": "white",
-                "selected": "white on dark_green",
-            })
+            styles.update(
+                {
+                    "panel": "white",
+                    "selected": "white on dark_green",
+                }
+            )
         return styles
 
     def render(self) -> RenderableType:
@@ -180,16 +181,18 @@ class DataGrid(Widget, can_focus=True):
         out = table = Table(
             expand=True,
             caption=f"{len(self.data.df.index)} of {len(self.data.df_0.index)} records. POS: {self.selected_col}, {self.offset}",
-            box=styles['box']
+            box=styles["box"],
         )
-        out = Panel(out, style=styles['panel'])
+        out = Panel(out, style=styles["panel"])
 
-        table.add_column("", style=styles['index'], justify="right")
+        table.add_column("", style=styles["index"], justify="right")
 
         # Add Cols
         for index, column in self.data.headers():
-            style = styles['selected'] if index == self.selected_col else styles['column']
-            table.add_column(column, style=style, header_style=styles['header'])
+            style = (
+                styles["selected"] if index == self.selected_col else styles["column"]
+            )
+            table.add_column(column, style=style, header_style=styles["header"])
 
         # Add Rows
         skew = +1 if not self.zeroidx else 0
@@ -197,4 +200,4 @@ class DataGrid(Widget, can_focus=True):
             row = [value_renderable(x) for x in value_list]
             table.add_row(str(index + start + skew), *row)
 
-        return Panel(table, box=box.ROUNDED, style=styles['panel'])
+        return Panel(table, box=box.ROUNDED, style=styles["panel"])

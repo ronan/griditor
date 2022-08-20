@@ -27,6 +27,7 @@ file = "demo.csv"
 if 1 in sys.argv:
     file = sys.argv[1]
 
+
 class Griditor(App):
 
     filter_field: None
@@ -39,12 +40,7 @@ class Griditor(App):
     show_help = Reactive(False)
 
     async def on_load(self, event: events.Load) -> None:
-        self.df = pd.read_csv(
-            file,
-            parse_dates = True,
-            na_values = ['']
-        )
-
+        self.df = pd.read_csv(file, parse_dates=True, na_values=[""])
 
         self.data = Data()
         self.data.load(file)
@@ -79,7 +75,6 @@ class Griditor(App):
         self.help = Help()
         self.help.visible = False
 
-        # await self.view.dock(self.grid, edge="top")
         await self.view.dock(Header(), edge="top")
         await self.view.dock(Footer(), edge="bottom")
         await self.view.dock(self.filters, edge="bottom", size=3)
@@ -87,19 +82,8 @@ class Griditor(App):
         await self.view.dock(self.grid, edge="bottom")
 
         await self.set_focus(self.grid)
-        # self.editor = DockView()
-        # await self.view.dock(self.editor, edge="top")
-        # await self.editor.action_toggle("filter")
-        # await self.view.dock(self.filters, edge="bottom", size=3, name="filter")
-        # await self.view.dock(self.grid, edge="bottom")
-
-        # await self.view.dock(self.editor, edge="top")
-
-        # await self.view.dock(Static(Pretty(self.editor)), edge="bottom", z=1)
-
-        # await self.view.dock(self.help, edge="bottom", z=1, size=11)
 
 
 
 def run():
-  Griditor.run(title="Griditor", log="textual.log")
+    Griditor.run(title="Griditor", log="textual.log")
