@@ -1,18 +1,11 @@
 from __future__ import annotations
 
 import rich
-from rich.console import RenderableType
-from rich.text import Text
-from rich.panel import Panel
-from rich import box
 
 from textual import events
-from textual.layouts.dock import DockLayout
-from textual.layouts.grid import GridLayout
 from textual.message import Message
 from textual.views import DockView
 from textual.reactive import Reactive
-from textual.views import WindowView
 
 from .data import Data
 from .input import TextInput
@@ -22,6 +15,7 @@ class Filter(DockView):
     can_focus: bool = True
     has_focus: Reactive[bool] = Reactive(False)
     visible: bool = False
+    layout_size: int = 3
 
     def __init__(self, data: Data) -> None:
         super().__init__(name="filter")

@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
-
 import math
-from pprint import pformat
 from datetime import datetime
 
 import pandas as pd
@@ -11,14 +8,12 @@ import pandas as pd
 from rich import box
 from rich.table import Table
 from rich.panel import Panel
-from rich.layout import Layout
-from rich.console import RenderableType, Console
+from rich.console import RenderableType
 from rich.pretty import Pretty
 from rich.text import Text
 
 from textual import events
-from textual.app import Widget, Reactive, log
-from textual.widgets import Placeholder
+from textual.app import Widget, Reactive
 
 from .data import Data
 
@@ -50,8 +45,6 @@ def value_renderable(value) -> RenderableType:
 class DataGrid(Widget, can_focus=True):
     can_focus: bool = True
 
-    original_df = None
-    df = None
     data: Data = Data()
 
     zeroidx: Reactive[bool] = Reactive(False)
@@ -60,11 +53,9 @@ class DataGrid(Widget, can_focus=True):
     mouse_over: Reactive[bool] = Reactive(False)
     height: Reactive[int] = Reactive(20)
 
-    def __init__(self, name: str = None, df=None, data=None) -> None:
+    def __init__(self, data: Data, name: str | None = None) -> None:
         super().__init__(name)
 
-        self.original_df = df
-        self.dfs = df.copy()
         self.data = data
 
         self.reset()
@@ -110,9 +101,6 @@ class DataGrid(Widget, can_focus=True):
 
     async def key_c(self) -> None:
         self.data.clean()
-
-    async def key_r(self) -> None:
-        self.reset()
 
     async def key_z(self) -> None:
         self.zeroidx = not self.zeroidx

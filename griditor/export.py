@@ -17,8 +17,9 @@ class Export(DockView):
     has_focus: Reactive[bool] = Reactive(False)
     data: Reactive[Data] = Reactive(Data())
     visible: Reactive[bool] = False
+    layout_size: int = 3
 
-    def __init__(self, data: Data) -> None:
+    def __init__(self, data: Data, name: str | None = None) -> None:
         super().__init__(name="export")
         self.filepath = TextInput(
             name="filepath",

@@ -38,6 +38,11 @@ class Data:
     def discard_snapshot(self) -> None:
         self.dfs.pop()
 
+    def delete_col(self):
+        if len(self.df.columns):
+            self.df = self.df.drop(self.col().name, axis=1)
+            self.move_cursor(col_delta=-1)
+
     def shuffle(self) -> None:
         self.df = self.df.sample(frac=1)
 
