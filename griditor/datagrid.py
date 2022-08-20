@@ -1,4 +1,8 @@
-import json, csv, os, random, psutil, math, sys
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
+
+import math
 from pprint import pformat
 from datetime import datetime
 
@@ -15,6 +19,8 @@ from rich.text import Text
 from textual import events
 from textual.app import Widget, Reactive, log
 from textual.widgets import Placeholder
+
+from .data import Data
 
 PAST = 950000000
 FUTURE = 1900000000
@@ -46,10 +52,8 @@ class DataGrid(Widget, can_focus=True):
 
     original_df = None
     df = None
-    data = None
+    data: Data = Data()
 
-    selected_col: Reactive[int] = Reactive(0)
-    offset: Reactive[int] = Reactive(0)
     zeroidx: Reactive[bool] = Reactive(False)
 
     has_focus: Reactive[bool] = Reactive(False)
@@ -90,10 +94,10 @@ class DataGrid(Widget, can_focus=True):
         self.scroll(-self.get_page_size())
 
     async def key_home(self) -> None:
-        self.offset = 0
+        self.data.set_cursor(0, 0)
 
     async def key_end(self) -> None:
-        self.scroll(len(self.data.df.index))
+        self.data.set_cursor(len(self.data.df.column), len(self.data.df.index))
 
     async def key_left(self) -> None:
         self.move_column_selection(-1)
@@ -105,49 +109,39 @@ class DataGrid(Widget, can_focus=True):
         self.shuffle()
 
     async def key_c(self) -> None:
-        self.clean()
+        self.data.clean()
 
     async def key_r(self) -> None:
         self.reset()
-
-    async def key_g(self) -> None:
-        self.group()
 
     async def key_z(self) -> None:
         self.zeroidx = not self.zeroidx
 
     async def key_w(self) -> None:
-        self.data.rsort(self.selected_col)
+        self.data.rsort()
 
     async def key_s(self) -> None:
-        self.data.sort(self.selected_col)
+        self.data.sort()
 
     def reset(self) -> None:
         self.data.restore()
-        self.select_column(0)
-        self.offset = 0
 
     def shuffle(self) -> None:
         self.data.shuffle()
 
     def clean(self) -> None:
-        self.data.clean(self.selected_col)
+        self.data.clean()
 
     def scroll(self, delta: int = 1) -> None:
-        self.offset = clamp(
-            self.offset + delta, 0, len(self.data.df.index) - self.get_page_size()
-        )
+        self.data.move_cursor(row_delta=delta)
 
     def filter(self, query: str = "") -> None:
-        self.data.filter(self.selected_col, query)
+        self.data.filter(query)
 
     def move_column_selection(self, delta) -> None:
-        self.select_column(self.selected_col + delta)
+        self.data.move_cursor(col_delta=delta)
 
-    def select_column(self, idx) -> None:
-        self.selected_col = clamp(idx, 0, len(self.data.df.index) - 1)
-
-    def get_page_size(self) -> None:
+    def get_page_size(self) -> int:
         return self.size.height - 7
 
     def get_styles(self) -> dict:
@@ -175,12 +169,12 @@ class DataGrid(Widget, can_focus=True):
 
         styles = self.get_styles()
         visible = self.get_page_size()
-        start = clamp(self.offset, 0, num_rows - 1)
+        start = clamp(self.data.cursor[1], 0, num_rows - 1)
         end = clamp(start + visible, 0, num_rows - 1)
 
         out = table = Table(
             expand=True,
-            caption=f"{len(self.data.df.index)} of {len(self.data.df_0.index)} records. POS: {self.selected_col}, {self.offset}",
+            caption=f"{len(self.data.df.index)} of {len(self.data.df_0.index)} records. POS: {self.data.cursor[0]}, {self.data.cursor[1]}",
             box=styles["box"],
         )
         out = Panel(out, style=styles["panel"])
@@ -190,7 +184,7 @@ class DataGrid(Widget, can_focus=True):
         # Add Cols
         for index, column in self.data.headers():
             style = (
-                styles["selected"] if index == self.selected_col else styles["column"]
+                styles["selected"] if index == self.data.cursor[0] else styles["column"]
             )
             table.add_column(column, style=style, header_style=styles["header"])
 

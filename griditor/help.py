@@ -5,9 +5,10 @@ from rich.table import Table
 from rich.console import RenderableType
 from rich.panel import Panel
 
+
 class Help(Widget):
+    can_focus: bool = True
     visible: Reactive[bool] = False
-    can_focus: True
 
     def __init__(
         self,
@@ -21,21 +22,23 @@ class Help(Widget):
         table.add_column("command", justify="left", width=10)
         table.add_column("help", justify="left", ratio=1)
 
-        table.add_row(f"Q", "Quit",     "Exit Griditor")
-        table.add_row(f"?", "Help",     "Show this help screen")
-        table.add_row(f"X", "Shuffle",  "Randomize the order of all rows")
-        table.add_row(f"C", "Clean",    "Remove all rows where the selected column is empty")
-        table.add_row(f"S", "Sort ↓",   "Sort rows by the selected column")
-        table.add_row(f"W", "Sort ↑",   "Reverse sort rows by the selected column")
-        table.add_row(f"R", "Reset",    "Revert to the original data set")
+        table.add_row(f"Q", "Quit", "Exit Griditor")
+        table.add_row(f"?", "Help", "Show this help screen")
+        table.add_row(f"X", "Shuffle", "Randomize the order of all rows")
+        table.add_row(
+            f"C", "Clean", "Remove all rows where the selected column is empty"
+        )
+        table.add_row(f"S", "Sort ↓", "Sort rows by the selected column")
+        table.add_row(f"W", "Sort ↑", "Reverse sort rows by the selected column")
+        table.add_row(f"R", "Reset", "Revert to the original data set")
 
         self.layout_size = 11
 
         return Panel(
             table,
-            title = "Help",
-            border_style = "blue",
-            box = box.ROUNDED,
-            height = self.layout_size,
-            padding = (1,0)
+            title="Help",
+            border_style="blue",
+            box=box.ROUNDED,
+            height=self.layout_size,
+            padding=(1, 0),
         )

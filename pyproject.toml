@@ -6,7 +6,7 @@ authors = ["Ronan Dowling <rd@ronandowling.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 psutil = "^5.9.1"
 textual = "^0.1.18"
 pandas = "^1.4.3"

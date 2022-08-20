@@ -2,88 +2,48 @@ from __future__ import annotations
 
 import rich
 from rich.console import RenderableType
-from rich.style import StyleType
 from rich.text import Text
 from rich.panel import Panel
 from rich import box
-from rich.style import Style
 
 from textual import events
-from textual.geometry import SpacingDimensions
+from textual.layouts.dock import DockLayout
 from textual.layouts.grid import GridLayout
 from textual.message import Message
-from textual.messages import CursorMove
-from textual.scrollbar import ScrollTo, ScrollBar
-from textual.geometry import clamp
-from textual.view import View
-
-from textual.widgets import Static
-
+from textual.views import DockView
 from textual.reactive import Reactive
+from textual.views import WindowView
 
-from textual_inputs import IntegerInput, TextInput
-
-class FilterTextInput(TextInput):
-    def render(self) -> RenderableType:
-        if self.has_focus:
-            segments = self._render_text_with_cursor()
-        else:
-          segments = [".* "]
-
-        segments = [Text("s/ ", style="dim" )] + segments + [Text("/g ", style="dim" )]
-
-        text = Text.assemble(*segments)
-
-        if (
-            self.title
-            and not self.placeholder
-            and len(self.value) == 0
-            and not self.has_focus
-        ):
-            title = ""
-        else:
-            title = self.title
-
-        return Panel(
-            text,
-            title_align="left",
-            height=3,
-            style="dim" if not self.has_focus else "" ,
-            box=box.HEAVY if self.has_focus else box.SQUARE,
-        )
+from .data import Data
+from .input import TextInput
 
 
-
-class Filter(View):
-    datagrid = None
+class Filter(DockView):
+    can_focus: bool = True
     has_focus: Reactive[bool] = Reactive(False)
-    visible: False
+    visible: bool = False
 
-    def __init__(
-        self,
-    ) -> None:
-        from textual.views import WindowView
+    def __init__(self, data: Data) -> None:
+        super().__init__(name="filter")
+        self.data = data
 
-        self.regex = FilterTextInput(
-            title="REGEX Filter",
-            placeholder = "s//g",
-            syntax="regex"
+        self.regex = TextInput(
+            title=" ",
+            placeholder=".*",
+            prefix="s/ ",
+            suffix=" /g",
         )
         self.regex.on_change_handler_name = "handle_on_change_regex"
 
-        self.window = WindowView(
-            self.regex
-        )
-        layout = GridLayout()
-        layout.add_column("regex")
-        layout.add_row("main")
-        layout.add_areas(
-            content="regex,main",
-        )
-        layout.place(
-            content=self.window,
-        )
-        super().__init__(name="filter", layout=layout)
+    def __rich_repr__(self) -> rich.repr.Result:
+        yield "name", "filter"
+
+    async def on_mount(self, event: events.Mount) -> None:
+        await self.dock(self.regex)
+
+    async def on_show(self, event: events.Show) -> None:
+        self.data.create_snapshot()
+        await self.regex.focus()
 
     async def on_focus(self, event: events.Focus) -> None:
         self.has_focus = True
@@ -91,20 +51,29 @@ class Filter(View):
 
     async def on_blur(self, event: events.Blur) -> None:
         self.has_focus = False
+        await self.close(False)
 
     async def on_key(self, event: events.Key) -> None:
-        if event.key == "ctrl+i" or event.key == "escape":
+        if event.key in ["escape"]:
             event.prevent_default().stop()
-            await self.app.action_escape()
+            await self.close(commit=False)
+
+        if event.key in ["enter", "return"]:
+            event.prevent_default().stop()
+            await self.close(commit=True)
 
         await self.dispatch_key(event)
 
+    async def close(self, commit=False) -> None:
+        if commit:
+            self.data.discard_snapshot()
+        else:
+            self.data.restore_snapshot()
+        await self.app.action_escape()
+
     async def handle_on_change_regex(self, message: Message) -> None:
-        self.datagrid.filter(message.sender.value)
+        self.data.restore_snapshot()
+        self.data.filter(message.sender.value)
 
     def reset(self) -> None:
         self.regex.value = ""
-
-
-    def __rich_repr__(self) -> rich.repr.Result:
-        yield "name", "filters"

@@ -3,25 +3,15 @@ import sys
 import pandas as pd
 
 from textual import events
-from textual.app import App, Reactive, log, View
-from textual.widgets import Placeholder, Static
-from textual.widgets import ScrollView
-from textual.keys import Keys
-from textual.views import GridView, DockView
+from textual.app import App
 
-from rich.text import Text
-from rich.layout import Layout
-from rich.pretty import Pretty
-
+from .data import Data
 from .help import Help
 from .footer import Footer
 from .header import Header
 from .datagrid import DataGrid
 from .filter import Filter
-from .data import Data
-
-from textual_inputs import IntegerInput, TextInput
-
+from .export import Export
 
 file = "demo.csv"
 if 1 in sys.argv:
@@ -29,15 +19,8 @@ if 1 in sys.argv:
 
 
 class Griditor(App):
-
-    filter_field: None
-    filter_match: ""
-
-    header = []
     data = None
     df = None
-
-    show_help = Reactive(False)
 
     async def on_load(self, event: events.Load) -> None:
         self.df = pd.read_csv(file, parse_dates=True, na_values=[""])
@@ -47,42 +30,53 @@ class Griditor(App):
 
         await self.bind("q", "quit", "Quit")
         await self.bind("?", "view.toggle('help')", "Help")
-        await self.bind("f, ctrl+i, escape, enter", "toggle_filter", "Filter")
+        await self.bind("f", "view.toggle('filter')", "Filter")
+        await self.bind("e", "view.toggle('export')", "Export")
 
-    async def action_toggle_help(self) -> None:
-        self.help.toggle()
+        await self.bind("ctrl+i", "tab")
+        await self.bind("escape", "escape")
 
-    async def action_toggle_filter(self) -> None:
-        if self.filters.visible:
-            await self.action_escape()
-        else:
-            self.filters.visible = True
-            await self.view.refresh_layout()
-            await self.filters.focus()
+    # # async def action_toggle_filter(self) -> None:
+    # #     if self.filters.visible:
+    # #         await self.action_escape()
+    # #     else:
+    # #         self.filters.visible = True
+    # #         await self.filters.focus()
+    # #     await self.view.refresh_layout()
+
+    # async def action_toggle_export(self) -> None:
+    #     if self.export.visible:
+    #         await self.action_escape()
+    #     else:
+    #         self.export.visible = True
+    #         await self.export.focus()
+    #     await self.view.refresh_layout()
 
     async def action_escape(self) -> None:
-        self.filters.visible = False
-        self.filters.reset()
-        await self.view.refresh_layout()
+        self.filter.reset()
+        self.export.reset()
+        self.export.visible = False
+        self.filter.visible = False
         await self.grid.focus()
+        await self.view.refresh_layout()
+
+    async def action_tab(self) -> None:
+        pass
 
     async def on_mount(self, event: events.Mount) -> None:
         self.grid = DataGrid(df=self.df, data=self.data)
-        self.filters = Filter()
-        self.filters.datagrid = self.grid
-        self.filters.df = self.df
-        self.filters.visible = False
+        self.filter = Filter(data=self.data)
+        self.export = Export(data=self.data)
         self.help = Help()
-        self.help.visible = False
 
         await self.view.dock(Header(), edge="top")
         await self.view.dock(Footer(), edge="bottom")
-        await self.view.dock(self.filters, edge="bottom", size=3)
+        await self.view.dock(self.filter, edge="bottom", size=3)
+        await self.view.dock(self.export, edge="bottom", size=3)
         await self.view.dock(self.help, edge="bottom")
         await self.view.dock(self.grid, edge="bottom")
 
         await self.set_focus(self.grid)
-
 
 
 def run():
