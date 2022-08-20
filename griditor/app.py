@@ -54,7 +54,7 @@ class Griditor(App):
 
     async def action_toggle_filter(self) -> None:
         if self.filters.visible:
-            self.action_escape()
+            await self.action_escape()
         else:
             self.filters.visible = True
             await self.view.refresh_layout()

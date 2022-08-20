@@ -12,6 +12,19 @@
       "module": "griditor",
       "console": "integratedTerminal",
       "justMyCode": false
+    },
+    {
+      "name": "Pizzas service",
+      "type": "python",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "cwd": "${workspaceFolder}",
+      "module": "poetry",
+      "justMyCode": false,
+      "args": [
+        "run",
+        "app",
+      ]
     }
   ]
 }

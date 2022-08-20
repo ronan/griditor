@@ -14,6 +14,7 @@ textual-inputs = "~=0.2.6"
 
 [tool.poetry.dev-dependencies]
 watchdog = "^2.1.9"
+poetry = "^1.1.14"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

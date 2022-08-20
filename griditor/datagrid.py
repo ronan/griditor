@@ -131,7 +131,7 @@ class DataGrid(Widget, can_focus=True):
         self.data.shuffle()
 
     def clean(self) -> None:
-        self.data.clean()
+        self.data.clean(self.selected_col)
 
     def scroll(self, delta: int = 1) -> None:
         self.offset = clamp(

@@ -15,18 +15,16 @@ class Data:
         self.df = self.df.sample(frac=1)
 
     def clean(self, col: int):
-        self.df = self.df[self.col(col).notnull()]
+        self.df = self.df.loc[self.col(col).notnull()]
 
     def filter(self, col: int, query: str = "") -> None:
         self.df = self.df.loc[self.col(col).str.contains(query, case=False)]
 
     def sort(self, col: int):
-        self.df = self.df.sort_values(by=self.col_at(col), ascending=True, na_position="first")
+        self.df = self.df.sort_values(by=self.col(col).name, ascending=True, na_position="first")
 
     def rsort(self, col: int):
-        self.df = self.df.sort_values(
-            by=self.col_at(col), ascending=False, na_position="last"
-            )
+        self.df = self.df.sort_values(by=self.col_at(col), ascending=False, na_position="last")
 
     def col_at(self, idx: int) -> str:
         return self.df.columns[idx]
