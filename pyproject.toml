@@ -11,10 +11,13 @@ psutil = "^5.9.1"
 textual = "^0.1.18"
 pandas = "^1.4.3"
 textual-inputs = "~=0.2.6"
+mysql-connector = "^2.2.9"
+numpy = "^1.23.2"
 
 [tool.poetry.dev-dependencies]
 watchdog = "^2.1.9"
 poetry = "^1.1.14"
+autopep8 = "^1.7.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

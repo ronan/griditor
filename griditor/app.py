@@ -1,9 +1,7 @@
 import sys
 
-import pandas as pd
-
 from textual import events
-from textual.app import App
+from textual.app import App, log
 
 from .data import Data
 from .help import Help
@@ -14,7 +12,7 @@ from .filter import Filter
 from .export import Export
 
 file = "demo.csv"
-if 1 in sys.argv:
+if len(sys.argv) > 1:
     file = sys.argv[1]
 
 
@@ -23,6 +21,8 @@ class Griditor(App):
     df = None
 
     async def on_load(self, event: events.Load) -> None:
+        log(f"Opening file {file}")
+
         self.data.load(file)
 
         await self.bind("q", "quit", "Quit")

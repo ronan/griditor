@@ -1,8 +1,9 @@
 from __future__ import annotations
+from typing import List
 
 import re
-
-from typing import List
+from urllib.parse import urlparse
+import mysql.connector as mysql
 
 import pandas as pd
 
@@ -22,7 +23,24 @@ class Data:
     cursor: List[int] = [0, 0]
 
     def load(self, file: str) -> None:
-        self.df_0 = self.df = pd.read_csv(file, parse_dates=True, na_values=[""])
+        import pandas as pd
+
+        if file[:8] == "mysql://":
+            result = urlparse(file)
+            conn = mysql.connect(
+                host=result.hostname,
+                user=result.username,
+                passwd=result.password,
+                db=result.path[1:],
+            )
+            self.df_0 = self.df = pd.read_sql(
+                f"SELECT * FROM {result.fragment}", con=conn
+            )
+
+        else:
+            self.df_0 = self.df = pd.read_csv(
+                file, parse_dates=True, na_values=["", "-"], sep=None
+            )
 
     def save(self, filepath: str) -> None:
         self.df.to_csv(f"{filepath}.csv")
@@ -50,6 +68,7 @@ class Data:
 
     def clean(self):
         self.df = self.df.loc[self.col().notnull()]
+        self.df = self.df.loc[self.col() != ""]
 
     def filter(self, query: str = "") -> None:
         try:
@@ -85,7 +104,8 @@ class Data:
             return self.col(self.cursor[0])
 
     def move_cursor(self, col_delta: int = 0, row_delta: int = 0) -> None:
-        self.set_cursor(col=self.cursor[0] + col_delta, row=self.cursor[1] + row_delta)
+        self.set_cursor(
+            col=self.cursor[0] + col_delta, row=self.cursor[1] + row_delta)
         return
 
     def set_cursor(self, col: int = 0, row: int = 0):
