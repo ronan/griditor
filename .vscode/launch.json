@@ -5,18 +5,20 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Griditor",
+      "name": "Processor",
       "type": "python",
       "request": "launch",
-      "python": "${workspaceFolder}/.venv/bin/python",
-      "cwd": "${workspaceFolder}",
-      "module": "griditor",
+      "cwd": "${workspaceFolder}/examples",
+      "program": "process.py",
       "justMyCode": false,
     },
     {
-      "name": "Pizzas service",
+      "name": "Griditor",
       "type": "python",
       "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "program": "run.py",
+      "justMyCode": false,
     }
   ]
 }

@@ -3,8 +3,6 @@ from __future__ import annotations
 import math
 from datetime import datetime
 
-import pandas as pd
-
 from rich import box
 from rich.table import Table
 from rich.panel import Panel
@@ -33,7 +31,7 @@ def value_renderable(value) -> RenderableType:
     if isinstance(value, float) and math.isnan(value):
         return Text("∅", style="dim")
 
-    if isinstance(value, float) and PAST < int(value) < FUTURE:
+    if (isinstance(value, float) or isinstance(value, int)) and PAST < int(value) < FUTURE:
         return Text(datetime.fromtimestamp(value).strftime("%Y-%b-%d"))
 
     if isinstance(value, bool):
@@ -47,17 +45,16 @@ class DataGrid(Widget, can_focus=True):
 
     data: Data = Data()
 
-    zeroidx: Reactive[bool] = Reactive(False)
+    zero_idx: Reactive[bool] = Reactive(False)
 
     has_focus: Reactive[bool] = Reactive(False)
     mouse_over: Reactive[bool] = Reactive(False)
     height: Reactive[int] = Reactive(20)
+    max_cols: Reactive[int] = Reactive(11)
 
     def __init__(self, data: Data, name: str | None = None) -> None:
         super().__init__(name)
-
         self.data = data
-
         self.reset()
 
     async def on_mount(self, event: events.Mount) -> None:
@@ -73,37 +70,38 @@ class DataGrid(Widget, can_focus=True):
         await self.dispatch_key(event)
 
     async def key_down(self) -> None:
-        self.scroll(1)
+        self.data.move_cursor(row_delta=1)
 
     async def key_up(self) -> None:
-        self.scroll(-1)
+        self.data.move_cursor(row_delta=-1)
 
     async def key_pagedown(self) -> None:
-        self.scroll(self.get_page_size())
+        self.data.move_cursor(row_delta=self.get_page_size())
 
     async def key_pageup(self) -> None:
-        self.scroll(-self.get_page_size())
+        self.data.move_cursor(row_delta=self.get_page_size())
 
     async def key_home(self) -> None:
         self.data.set_cursor(0, 0)
 
     async def key_end(self) -> None:
-        self.data.set_cursor(len(self.data.df.column), len(self.data.df.index))
+        self.data.set_cursor(len(self.data.df.columns),
+                             len(self.data.df.index))
 
     async def key_left(self) -> None:
-        self.move_column_selection(-1)
+        self.data.move_cursor(col_delta=-1)
 
     async def key_right(self) -> None:
-        self.move_column_selection(1)
+        self.data.move_cursor(col_delta=1)
 
     async def key_x(self) -> None:
-        self.shuffle()
+        self.data.df = self.data.df.sample(frac=1)
 
     async def key_c(self) -> None:
         self.data.clean()
 
-    async def key_z(self) -> None:
-        self.zeroidx = not self.zeroidx
+    async def key_zero(self) -> None:
+        self.zero_idx = not self.zero_idx
 
     async def key_w(self) -> None:
         self.data.rsort()
@@ -114,9 +112,6 @@ class DataGrid(Widget, can_focus=True):
     def reset(self) -> None:
         self.data.restore()
 
-    def shuffle(self) -> None:
-        self.data.shuffle()
-
     def clean(self) -> None:
         self.data.clean()
 
@@ -126,9 +121,6 @@ class DataGrid(Widget, can_focus=True):
     def filter(self, query: str = "") -> None:
         self.data.filter(query)
 
-    def move_column_selection(self, delta) -> None:
-        self.data.move_cursor(col_delta=delta)
-
     def get_page_size(self) -> int:
         return self.size.height - 7
 
@@ -136,6 +128,8 @@ class DataGrid(Widget, can_focus=True):
         styles = {
             "panel": "dim",
             "column": "white",
+            "row": "",
+            "selected_row": "bold red",
             "selected": "white on bright_black",
             "header": "white",
             "index": "dim",
@@ -152,34 +146,48 @@ class DataGrid(Widget, can_focus=True):
         return styles
 
     def render(self) -> RenderableType:
-        num_rows = len(self.data.df.index)
-        # num_rows = len(self.df.index)
-
         styles = self.get_styles()
-        visible = self.get_page_size()
-        start = clamp(self.data.cursor[1], 0, num_rows - 1)
-        end = clamp(start + visible, 0, num_rows - 1)
+
+        num_cols = min(self.max_cols, len(self.data.df.columns))
+
+        first_col = clamp(
+            self.data.cursor[0] - self.max_cols + 1, 0, len(self.data.df.columns))
+        last_col = clamp(first_col + num_cols, 0, len(self.data.df.columns))
 
         out = table = Table(
             expand=True,
-            caption=f"{len(self.data.df.index)} of {len(self.data.df_0.index)} records. POS: {self.data.cursor[0]}, {self.data.cursor[1]}",
             box=styles["box"],
+            show_footer=True,
         )
         out = Panel(out, style=styles["panel"])
 
-        table.add_column("", style=styles["index"], justify="right")
-
-        # Add Cols
-        for index, column in self.data.headers():
+        table.add_column(
+            "", style=styles["index"], justify="right")
+        for index, column in self.data.headers()[first_col:last_col]:
             style = (
                 styles["selected"] if index == self.data.cursor[0] else styles["column"]
             )
-            table.add_column(column, style=style, header_style=styles["header"])
+            table.add_column(
+                column,
+                style=style,
+                header_style=styles["header"],
+            )
 
-        # Add Rows
-        skew = +1 if not self.zeroidx else 0
-        for index, value_list in self.data.slice(start, end):
+        num_rows = len(self.data.df.index)
+        page_size = self.get_page_size()
+
+        first_row = clamp(
+            self.data.cursor[1] - page_size//2, 0, num_rows - 1)
+        last_row = clamp(first_row + page_size, 0, num_rows)
+        first_row = clamp(last_row - page_size, 0, num_rows - 1)
+
+        skew = +1 if not self.zero_idx else 0
+        for index, value_list in self.data.df[first_row:last_row].iterrows():
+            style = (
+                styles["selected_row"] if index == self.data.cursor[1] else styles["row"]
+            )
             row = [value_renderable(x) for x in value_list]
-            table.add_row(str(index + start + skew), *row)
+            row = row[first_col:last_col]
+            table.add_row(str(index + skew), *row, style=style)
 
         return Panel(table, box=box.ROUNDED, style=styles["panel"])

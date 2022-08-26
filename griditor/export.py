@@ -21,6 +21,7 @@ class Export(DockView):
 
     def __init__(self, data: Data, name: str | None = None) -> None:
         super().__init__(name="export")
+        self.data = data
         self.filepath = TextInput(
             name="filepath",
             title="Export To",

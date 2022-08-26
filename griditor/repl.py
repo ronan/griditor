@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import re
+import code
 
 import rich
 
@@ -13,37 +13,34 @@ from .data import Data
 from .input import TextInput
 
 
-class Filter(DockView):
+class Repl(DockView):
     can_focus: bool = True
     has_focus: Reactive[bool] = Reactive(False)
     visible: bool = False
     layout_size: int = 3
 
     def __init__(self, data: Data) -> None:
-        super().__init__(name="filter")
+        super().__init__(name="repl")
         self.data = data
 
-        self.regex = TextInput(
+        self.repl = TextInput(
             title=" ",
-            placeholder=".*",
-            prefix="s/ ",
-            suffix=" /g",
+            placeholder="",
+            prefix=">>> ",
+            suffix="",
         )
-        self.regex.on_change_handler_name = "handle_on_change_regex"
-
-    def __rich_repr__(self) -> rich.repr.Result:
-        yield "name", "filter"
+        self.repl.on_change_handler_name = "handle_on_change_repl"
 
     async def on_mount(self, event: events.Mount) -> None:
-        await self.dock(self.regex)
+        await self.dock(self.repl)
 
     async def on_show(self, event: events.Show) -> None:
         self.snapshot = len(self.data.dfs) - 1
-        await self.regex.focus()
+        await self.repl.focus()
 
     async def on_focus(self, event: events.Focus) -> None:
         self.has_focus = True
-        await self.regex.focus()
+        await self.repl.focus()
 
     async def on_blur(self, event: events.Blur) -> None:
         self.has_focus = False
@@ -60,20 +57,21 @@ class Filter(DockView):
 
         await self.dispatch_key(event)
 
+    async def run(self):
+        exec(self.cmd)
+
     async def close(self, commit=False) -> None:
         if not commit:
             self.data.dfs = self.data.dfs[0:self.snapshot]
         await self.app.action_escape()
 
-    async def handle_on_change_regex(self, message: Message) -> None:
+    async def handle_on_change_repl(self, message: Message) -> None:
         try:
-            re.compile(message.sender.value)
-            self.regex.valid = True
-        except re.error:
-            self.regex.valid = False
-
-        self.data.dfs = self.data.dfs[0:self.snapshot]
-        self.data.filter(message.sender.value)
+            self.cmd = code.compile_command(message.sender.value)
+            self.repl.valid = True
+        except:
+            self.repl.valid = False
 
     def reset(self) -> None:
-        self.regex.value = ""
+        self.cmd = None
+        self.repl.value = ""

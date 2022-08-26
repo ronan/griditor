@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import mysql.connector as mysql
 
 import pandas as pd
+from pandas import DataFrame
 
 
 def clamp(val, min, max):
@@ -17,14 +18,24 @@ def clamp(val, min, max):
 
 
 class Data:
-    df: pd.DataFrame = None
-    df_0: pd.DataFrame = None
-    dfs: List[pd.DataFrame] = []
+    df_0: DataFrame = DataFrame()
+    dfs: List[DataFrame] = []
     cursor: List[int] = [0, 0]
+    src: str = ""
+
+    @property
+    def df(self) -> DataFrame:
+        if len(self.dfs) > 0:
+            return self.dfs[-1]
+        return pd.DataFrame()
+
+    @df.setter  # property-name.setter decorator
+    def df(self, value):
+        self.dfs.append(value)
 
     def load(self, file: str) -> None:
-        import pandas as pd
-
+        df = DataFrame
+        self.src = file
         if file[:8] == "mysql://":
             result = urlparse(file)
             conn = mysql.connect(
@@ -33,21 +44,28 @@ class Data:
                 passwd=result.password,
                 db=result.path[1:],
             )
-            self.df_0 = self.df = pd.read_sql(
+            df = pd.read_sql(
                 f"SELECT * FROM {result.fragment}", con=conn
             )
-
         else:
-            self.df_0 = self.df = pd.read_csv(
-                file, parse_dates=True, na_values=["", "-"], sep=None
+            df = pd.read_csv(
+                file,
+                parse_dates=True,
+                na_values=["", "-"],
+                sep=None,
+                engine='python'
             )
+
+        if isinstance(df, DataFrame):
+            df.columns = [col.strip() for col in df.columns]
+            self.dfs = [df]
 
     def save(self, filepath: str) -> None:
         self.df.to_csv(f"{filepath}.csv")
 
     def restore(self) -> None:
         self.reset_cursor()
-        self.df = self.df_0.copy()
+        self.df = self.dfs[0].copy()
 
     def create_snapshot(self) -> None:
         self.dfs.append(self.df)
@@ -56,19 +74,17 @@ class Data:
         self.df = self.dfs[-1]
 
     def discard_snapshot(self) -> None:
-        self.dfs.pop()
+        if len(self.dfs) > 1:
+            self.dfs.pop()
 
     def delete_col(self):
         if len(self.df.columns):
             self.df = self.df.drop(self.col().name, axis=1)
             self.move_cursor(col_delta=-1)
 
-    def shuffle(self) -> None:
-        self.df = self.df.sample(frac=1)
-
     def clean(self):
-        self.df = self.df.loc[self.col().notnull()]
-        self.df = self.df.loc[self.col() != ""]
+        df = self.df.loc[self.col().notnull()]
+        self.df = df.loc[self.col() != ""]
 
     def filter(self, query: str = "") -> None:
         try:
@@ -94,14 +110,27 @@ class Data:
     def header(self, idx: int) -> str:
         return self.df.columns[idx]
 
-    def slice(self, start: int = 0, end: int | None = None):
-        return enumerate(self.df[start:end].values.tolist())
-
     def col(self, idx: int | None = None) -> pd.Series:
-        if idx is not None:
+        if idx is not None and idx < len(self.df.columns):
             return self.df.iloc[:, idx]
         elif self.cursor[0] is not None:
             return self.col(self.cursor[0])
+        return pd.Series()
+
+    def row(self, idx: int | None = None) -> pd.Series:
+        if idx is not None and idx < len(self.df.index):
+            return self.df.iloc[idx, :]
+        elif self.cursor[1] is not None:
+            return self.row(self.cursor[1])
+        return pd.Series()
+
+    def next_row(self) -> pd.Series | None:
+        if self.cursor[1] > len(self.df.index):
+            return None
+
+        row = self.row(self.cursor[1])
+        self.move_cursor(row_delta=1)
+        return row
 
     def move_cursor(self, col_delta: int = 0, row_delta: int = 0) -> None:
         self.set_cursor(
@@ -109,8 +138,8 @@ class Data:
         return
 
     def set_cursor(self, col: int = 0, row: int = 0):
-        self.cursor[0] = clamp(col, 0, len(self.df.columns))
-        self.cursor[1] = clamp(row, 0, len(self.df.index))
+        self.cursor[0] = clamp(col, 0, len(self.df.columns) - 1)
+        self.cursor[1] = clamp(row, 0, len(self.df.index) - 1)
 
     def reset_cursor(self):
         self.set_cursor()
